@@ -152,7 +152,7 @@ describe('MS Teams Adapter', () => {
             wasCalled = true
             await res.reply('Hello World')
         })
-        const response = await fetch(`http://localhost:${robot.server.address().port}/api/messages`, {
+        const response = await fetch(`http://127.0.0.1:${robot.server.address().port}/api/messages`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
