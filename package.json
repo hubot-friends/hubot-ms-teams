@@ -1,0 +1,45 @@
+{
+  "name": "@hubot-friends/hubot-ms-teams",
+  "version": "1.0.0",
+  "description": "A new MS Teams adapter for Hubot",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hubot-friends/hubot-ms-teams.git"
+  },
+  "keywords": [
+    "hubot",
+    "ms teams",
+    "chat",
+    "bot"
+  ],
+  "author": "Joey Guerra",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hubot-friends/hubot-ms-teams/issues"
+  },
+  "homepage": "https://github.com/hubot-friends/hubot-ms-teams#readme",
+  "peerDependencies": {
+    "hubot": ">= 9.0.0"
+  },
+  "engines": {
+    "node": ">= 18.17.0",
+    "npm": ">= 9.5.1"
+  },
+  "release": {
+    "branches": [
+      "main",
+      "next"
+    ],
+    "dryRun": false
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "botbuilder": "^4.20.1"
+  }
+}
