@@ -98,7 +98,7 @@ class MsTeamsAdapter extends Adapter {
     }
     async run() {
         this.robot.router.use(async (req, res, next) => {
-            this.robot.logger.debug('from the web', req.url, req.headers, req.body)
+            this.robot.logger.debug(`request: ${req.url} headers: ${req.headers} body: ${req.body}`)
             next()
         })
         this.robot.router.post('/api/messages', async (req, res)=>{
