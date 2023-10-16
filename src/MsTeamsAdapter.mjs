@@ -101,7 +101,7 @@ class MsTeamsAdapter extends Adapter {
             this.robot.logger.debug(`request: ${JSON.stringify({url: req.url, headers: req.headers, body: req.body})}`)
             next()
         })
-        this.robot.router.post('/api/messages', async (req, res)=>{
+        this.robot.router.post(['/', '/api/messages'], async (req, res)=>{
             try { 
                 await this.#client.process(req, res, async context => {
                     await this.#activityHandler.run(context)

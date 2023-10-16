@@ -1,6 +1,6 @@
 {
   "name": "@hubot-friends/hubot-ms-teams",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "A new MS Teams adapter for Hubot",
   "main": "index.mjs",
   "scripts": {
