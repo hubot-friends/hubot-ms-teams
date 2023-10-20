@@ -51,12 +51,12 @@ class MsTeamsAdapter extends Adapter {
         this.robot.receive(textMessage)
     }
     async send(envelope, ...strings) {
-        const responses = await this.sendWithDelegate(envelope.user.message.sendActivity.bind(this), envelope, ...strings)
+        const responses = await this.sendWithDelegate(envelope.user.message.sendActivity.bind(envelope.user.message), envelope, ...strings)
         this.emit('send', envelope, responses)
         return responses
     }
     async reply(envelope, ...strings) {
-        const responses = await this.sendWithDelegate(envelope.user.message.sendActivity.bind(this), envelope, ...strings)
+        const responses = await this.sendWithDelegate(envelope.user.message.sendActivity.bind(envelope.user.message), envelope, ...strings)
         this.emit('reply', envelope, responses)
         return responses
     }
