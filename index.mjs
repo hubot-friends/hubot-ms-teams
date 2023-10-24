@@ -3,29 +3,38 @@ import {
     CloudAdapter,
     ConfigurationServiceClientCredentialFactory,
     createBotFrameworkAuthenticationFromConfiguration,
-    MessageFactory,
     ActivityHandler,
-    CardFactory,
-    TextFormatTypes,
 } from 'botbuilder'
 import { TextMessage } from 'hubot/src/message.js'
 import User from 'hubot/src/user.js'
 
+const defaultMessageMapper = context => new TextMessage(new User(context.activity.from.id, {
+    name: context.activity.from.name,
+    room: context.activity.channelId,
+    message: context  // this is what the code uses to send messages to MS Bot Service Platform
+}), context.activity.text, context.activity.id)
+
 class HubotActivityHandler extends ActivityHandler {
     #robot = null
-    constructor(robot) {
+    #messageMapper = null
+    constructor(robot, messageMapper = defaultMessageMapper) {
         super()
+        this.#messageMapper = messageMapper ?? defaultMessageMapper
         this.#robot = robot
         this.onMessage(async (context, next) => {
-            context.activity.text = context.activity.text.replace(/^\r\n/, '').replace(/\\n$/, '').trim()
-            await this.#robot.receive(new TextMessage(new User(context.activity.from.id, {
-                name: context.activity.from.name,
-                room: context.activity.channelId,
-                message: context // add the context to the user object so we can use it later
-            }), context.activity.text, context.activity.id))
+            context.activity.text = context.activity.text
+                .replace(/^\r\n/, '')
+                .replace(/\\n$/, '')
+                .replace(`<at>${this.#robot.name}</at> `, `@${this.#robot.name} `)
+                .replace(`<at>${this.#robot.alias}</at> `, `@${this.#robot.alias} `)
+                .trim()
+                await this.#robot.receive(this.#messageMapper(context))
             await next()
         })
     }
+}
+export {
+    HubotActivityHandler
 }
 export default {
     async use(robot) {
