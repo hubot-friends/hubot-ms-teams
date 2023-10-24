@@ -4,15 +4,9 @@ import Robot from 'hubot/src/robot.js'
 import Module from 'module'
 import { EventEmitter } from 'node:events'
 import { MsTeamsAdapter } from './src/MsTeamsAdapter.mjs'
-import init from './index.mjs'
+import init, { HubotActivityHandler } from './index.mjs'
 import {
-    CloudAdapter,
-    ConfigurationServiceClientCredentialFactory,
-    createBotFrameworkAuthenticationFromConfiguration,
-    MessageFactory,
     ActivityHandler,
-    CardFactory,
-    TextFormatTypes,
     TurnContext
 } from 'botbuilder'
 import { TextMessage } from 'hubot/src/message.js'
@@ -40,31 +34,6 @@ class TeamsCloudAdapter extends EventEmitter {
         await callback(new TurnContext(this, req.body))
     }
 }
-class TeamsActivityHandler extends ActivityHandler {
-    constructor(robot) {
-        super()
-        this.robot = robot
-        this.onMessage(async (context, next) => {
-            context.activity.text = context.activity.text.replace(/^\r\n/, '').replace(/\\n$/, '').trim()
-            const message = new TextMessage(new User(context.activity.from.id, {
-                name: context.activity.from.name,
-                room: context.activity.channelId,
-                message: Object.assign(context, {
-                    async sendActivity(context) {
-                        this.emit('sendActivity', context)
-                        return 'ok'
-                    }
-                })
-            }), context.activity.text, context.activity.id)
-            await this.robot.receive(message)
-            await next()
-        })
-    }
-    async run(context) {
-        return await super.run(context)
-    }
-}
-
 describe('Initialize Adapter', () => {
     beforeEach(() => {
         hookModuleToReturnMockFromRequire('@hubot-friends/hubot-ms-teams', {
@@ -110,11 +79,22 @@ describe('MS Teams Adapter', () => {
     let robot = null
     let client = null
     let activityHandler = null
+    const defaultMessageMapper = context => new TextMessage(new User(context.activity.from.id, {
+        name: context.activity.from.name,
+        room: context.activity.channelId,
+        message: Object.assign(context, {
+            async sendActivity(context) {
+                this.emit('sendActivity', context)
+                return 'ok'
+            }
+        })
+    }), context.activity.text, context.activity.id)
+    
     beforeEach(async () => {
         hookModuleToReturnMockFromRequire('hubot-friends/hubot-ms-teams', {
             use(robot) {
                 client = new TeamsCloudAdapter({})
-                activityHandler = new TeamsActivityHandler(robot)
+                activityHandler = new HubotActivityHandler(robot, defaultMessageMapper)
                 return new MsTeamsAdapter(robot, activityHandler, client)
             }
         })
@@ -159,6 +139,36 @@ describe('MS Teams Adapter', () => {
             },
             body: JSON.stringify({
                 text: '@test-bot Hello World',
+                channelId: 'test-room',
+                from: {
+                    id: 'test-user',
+                    name: 'test-user-name'
+                },
+                id: 'test-id',
+                type: 'message'
+            })
+        })
+        assert.equal(response.status, 200)
+        assert.deepEqual(wasCalled, true)
+    })
+
+    it('Respond to <at>test-bot</at> Helo Worlds', async () => {
+        let wasCalled = false
+        robot.adapter.on('sendActivity', context => {
+            assert.equal(context.text, 'Helo Worlds')
+        })
+        robot.respond(/Helo Worlds$/, async (res) => {
+            assert.equal(res.message.text, '@test-bot Helo Worlds')
+            wasCalled = true
+            await res.reply('Helo Worlds')
+        })
+        const response = await fetch(`http://127.0.0.1:${robot.server.address().port}/api/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: '<at>test-bot</at> Helo Worlds',
                 channelId: 'test-room',
                 from: {
                     id: 'test-user',
