@@ -28,7 +28,7 @@ class HubotActivityHandler extends ActivityHandler {
                 .replace(`<at>${this.#robot.name}</at> `, `@${this.#robot.name} `)
                 .replace(`<at>${this.#robot.alias}</at> `, `@${this.#robot.alias} `)
                 .trim()
-            await this.#robot.receive(this.#messageMapper(context))
+            await this.#robot.receive(this.#messageMapper.call(this, context))
             await next()
         })
     }
