@@ -84,7 +84,7 @@ describe('MS Teams Adapter', () => {
         room: context.activity.channelId,
         message: Object.assign(context, {
             async sendActivity(context) {
-                this.emit('sendActivity', context)
+                robot.adapter.emit('sendActivity', context)
                 return 'ok'
             }
         })
