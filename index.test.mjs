@@ -181,4 +181,39 @@ describe('MS Teams Adapter', () => {
         assert.equal(response.status, 200)
         assert.deepEqual(wasCalled, true)
     })
+
+    it('Responds to a private or Direct Message', async () => {
+        let wasCalled = false
+        robot.respond(/lunch/i, async (res) => {
+            assert.equal(res.message.text, '@test-bot lunch')
+            wasCalled = true
+            await res.reply('you said lunch')
+        })
+        const response = await fetch(`http://127.0.0.1:${robot.server.address().port}/api/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: 'lunch',
+                channelId: 'test-user',
+                id: 'test-id',
+                type: 'message',
+                from: {
+                    id: 'test-user',
+                    name: 'test-user-name'
+                },
+                conversation: {
+                    conversationType: 'personal',
+                    id: 'a:112388d8s8djj'
+                },
+                recipient: {
+                    id: '888adsjjdskueu',
+                    name: 'test-bot'
+                }
+            })
+        })
+        assert.equal(response.status, 200)
+        assert.deepEqual(wasCalled, true)
+    })
 })

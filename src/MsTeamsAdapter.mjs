@@ -7,6 +7,15 @@ import {
 } from 'botbuilder'
 
 const CONTENT_LENGTH_LIMIT = 2_000
+const conversationTypeMiddleware = {
+    personal(body, robot) {
+        const robotName = (robot.alias == false ? undefined : robot.alias) ?? robot.name
+        if (robotName == body.recipient.name && body.text.indexOf(`@${robotName} ` == -1)) {
+            body.text = `@${robotName} ${body.text}`
+        }
+        return body
+    }
+}
 
 class MsTeamsAdapter extends Adapter {
     #client
@@ -73,6 +82,16 @@ class MsTeamsAdapter extends Adapter {
             next()
         })
         this.robot.router.post(['/', '/api/messages'], async (req, res)=>{
+            const robotName = (this.robot.alias == false ? undefined : this.robot.alias) ?? this.robot.name
+            req.body.text = req.body.text
+                .replace(/^\r\n/, '')
+                .replace(/\\n$/, '')
+                .replace(`<at>${robotName}</at> `, `@${robotName} `)
+                .trim()
+
+            if(conversationTypeMiddleware[req.body?.conversation?.conversationType]) {
+                req.body = conversationTypeMiddleware[req.body.conversation.conversationType](req.body, this.robot)
+            }
             try { 
                 await this.#client.process(req, res, async context => {
                     await this.#activityHandler.run(context)
