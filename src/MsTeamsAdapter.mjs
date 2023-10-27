@@ -28,8 +28,8 @@ class MsTeamsAdapter extends Adapter {
         this.conversationReferences = {}
     }
     async #onTurnError(context, error) {
-        this.robot.logger.info('[onTurnError]', error, context)
-        await context.sendTraceActivity('OnTurnError Trace', `${error}`, 'https://www.botframework.com/schemas/error', 'TurnError')
+        this.robot.logger.info(`[onTurnError] ${error} ${JSON.stringify(context)}`)
+        await context.sendTraceActivity('onTurnError trace', `${error}`, 'https://www.botframework.com/schemas/error', 'TurnError')
         await context.sendActivity('The bot encountered an error.')
     }
     async send(envelope, ...strings) {
