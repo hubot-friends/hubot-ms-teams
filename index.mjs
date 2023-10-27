@@ -22,13 +22,7 @@ class HubotActivityHandler extends ActivityHandler {
         this.#messageMapper = messageMapper ?? defaultMessageMapper
         this.#robot = robot
         this.onMessage(async (context, next) => {
-            context.activity.text = context.activity.text
-                .replace(/^\r\n/, '')
-                .replace(/\\n$/, '')
-                .replace(`<at>${this.#robot.name}</at> `, `@${this.#robot.name} `)
-                .replace(`<at>${this.#robot.alias}</at> `, `@${this.#robot.alias} `)
-                .trim()
-                await this.#robot.receive(this.#messageMapper(context))
+            await this.#robot.receive(this.#messageMapper(context))
             await next()
         })
     }
