@@ -1,0 +1,82 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.16",
+    "version": "1.0.0",
+    "id": "<replace with some guid>",
+    "packageName": "<replace with your reverse domain name like com.hubot.testbot>",
+    "developer": {
+        "name": "<your name>",
+        "websiteUrl": "<your website url>",
+        "privacyUrl": "<your terms of use url>",
+        "termsOfUseUrl": "<your privacy url>"
+    },
+    "icons": {
+        "color": "icon-192.png",
+        "outline": "icon-32.png"
+    },
+    "name": {
+        "short": "<your bot name - the one you use when starting Hubot with the -n/--name argument>",
+        "full": "<your bot's display name>"
+    },
+    "description": {
+        "short": "Life embetterment bot",
+        "full": "Life embetterment bot"
+    },
+    "accentColor": "#FFFFFF",
+    "supportedChannelTypes": [
+        "sharedChannels",
+        "privateChannels"
+    ],
+    "bots": [
+        {
+            "botId": "<the application registration app id>",
+            "scopes": [
+                "personal",
+                "team",
+                "groupchat"
+            ],
+            "needsChannelSelector": false,
+            "isNotificationOnly": false,
+            "supportsFiles": true,
+            "supportsCalling": false,
+            "supportsVideo": true,
+            "commandLists": []
+        }
+    ],
+    "composeExtensions": [],
+    "configurableTabs": [],
+    "staticTabs": [],
+    "permissions": [
+        "identity",
+        "messageTeamMembers"
+    ],
+    "devicePermissions": [
+        "openExternal",
+        "media",
+        "notifications",
+        "geolocation",
+        "midi"
+    ],
+    "validDomains": [],
+    "authorization": {
+        "permissions": {
+            "resourceSpecific": [
+                {
+                    "type": "Application",
+                    "name": "ChannelSettings.Read.Group"
+                },
+                {
+                    "type": "Delegated",
+                    "name": "ChannelMeetingParticipant.Read.Group"
+                }
+            ]
+        }
+    },
+    "showLoadingIndicator": false,
+    "isFullScreen": false,
+    "defaultGroupCapability": {
+        "meetings": "tab",
+        "team": "bot",
+        "groupchat": "bot"
+    }
+}

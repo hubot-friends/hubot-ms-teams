@@ -2,14 +2,24 @@
 
 This is a [MS Teams Adapter](https://dev.botframework.com) for [Hubot](https://github.com/hubotio/hubot/), a popular chatbot framework. With this adapter, you can connect your Hubot instance to MS Teams and interact with users through chat.
 
+## TLDR; Expert Summary
+
+- Create a Hubot codebase locally with `npx hubot --create . -a @hubot-friends/hubot-ms-teams`
+- Create a `.env` file at the root of the new codebase with required environment varialbes
+- Use CloudFalared to route a publicly accesseable domain to your local instance of Hubot
+- Create a new Application Registration in Azure
+- Create a new Bot Service with that new Application ID
+- Get the app id and secret from the Bot Service configuration and put them in the `.env` file
+- Create a `manifest.json` file with 2 icons, zip them up and upload a new application in MS Teams Developer Portal
+- Publish it to your organization and wait for a few hours for Azure's data to get caught up because the bot won't be immediately available in Teams
+
 ## Installation
 
-To use this adapter, you'll need to have [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/) installed on your system. Then, you can install `hubot-ms-teams` using npm:
+To use this adapter, you'll need to have [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/) installed on your system. Then, you can install `@hubot-friends/hubot-ms-teams` using npm:
 
 ```sh
 npm install @hubot-friends/hubot-ms-teams
 ```
-
 
 ## Configuration
 
@@ -19,8 +29,6 @@ To configure `hubot-ms-teams`, you'll need to set a few environment variables:
 - `TEAMS_BOT_TENANT_ID`: Your Azure Account Tenant ID
 - `TEAMS_BOT_APP_ID`: Application ID when you register a new Application in Azure.
 - `TEAMS_BOT_APP_TYPE`: SingleTenant || MultiTenant
-
-Don't forget to add your instance of Hubot to the channels with which you want to interact with it.
 
 You can set these environment variables in a `.env` file in your Hubot project directory, or by exporting them in your shell.
 
@@ -60,7 +68,7 @@ At this point, you can start creating scripts in the `scripts` folder. Reference
 
 ## Going Live Set Up Instructions
 
-TLDR;
+### Summary
 
 - Domain name with valid SSL Cert
 - Azure account
@@ -68,6 +76,8 @@ TLDR;
 - Azure Application Registration
 - Azure Bot Service
 - App ID, Tenant ID, Client Secret (password)
+
+## Steps
 
 MS Azure really wants you to use their Bot Services and Azure resources for chat bots. All their documentation assumes your own that paved path. So utilizing Hubot for a MS Teams chat bot as a little bit off-road. Here's what worked as of `2023-10-20 4:53 PM CST`.
 
@@ -156,6 +166,16 @@ Click **Apply** at the bottom.
 Click on the **Manage Password** link next to **Microsoft App ID**.
 
 Create a new Client Secret by clicking **New client secret**. Note that the secret will only be shown once. So copy it and paste it into your `.env` file if you have one. You will **not** be able to come back to this page to get it again. Make sure to copy the **Value** and not the Secret ID.
+
+### Add Application in MS Teams
+
+The final step is to add the app to MS Teams. This requires creating a `manifest.json` file and 2 icons for Teams to use for your new application/bot. Edit the `manifest.json` file in this repo, replace the place holders with your values and then create a zip file of the `manifest.json`, `icon-32.png` and `icon-192.png` files. Ues this zip file when importing the app in MS Teams Developer Portal.
+
+Go to MS Teams. Click on the elipses on the left hand side menu, towards the bottom.
+
+Search for **Developer Portal** and click on that.
+
+Click on the **Apps** tab in Developer Portal. Click **Import app**.
 
 ### Hubot Setup
 
