@@ -169,7 +169,7 @@ Create a new Client Secret by clicking **New client secret**. Note that the secr
 
 ### Add Application in MS Teams
 
-The final step is to add the app to MS Teams. This requires creating a `manifest.json` file and 2 icons for Teams to use for your new application/bot. Edit the `manifest.json` file in this repo, replace the place holders with your values and then create a zip file of the `manifest.json`, `icon-32.png` and `icon-192.png` files. Ues this zip file when importing the app in MS Teams Developer Portal.
+The final step is to add the app to MS Teams. This requires creating a `manifest.json` file and [2 icons](https://learn.microsoft.com/en-us/microsoftteams/platform/concepts/design/design-teams-app-icon-store-appbar) for Teams to use for your new application/bot. Edit the `manifest.json` file in this repo, replace the place holders with your values and then create a zip file of the `manifest.json`, `icon-32.png` and `icon-192.png` files. Ues this zip file when importing the app in MS Teams Developer Portal.
 
 Go to MS Teams. Click on the elipses on the left hand side menu, towards the bottom.
 
