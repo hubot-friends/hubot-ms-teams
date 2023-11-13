@@ -5,8 +5,7 @@ import {
     createBotFrameworkAuthenticationFromConfiguration,
     ActivityHandler,
 } from 'botbuilder'
-import { TextMessage } from 'hubot/src/message.js'
-import User from 'hubot/src/user.js'
+import { TextMessage, User } from 'hubot'
 
 const defaultMessageMapper = context => new TextMessage(new User(context.activity.from.id, {
     name: context.activity.from.name,
