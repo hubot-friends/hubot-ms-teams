@@ -1,4 +1,4 @@
-import Adapter from 'hubot/src/adapter.js'
+import { Adapter } from 'hubot'
 import EventEmitter from 'node:events'
 import {
     MessageFactory,
