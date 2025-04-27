@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/hubot-friends/hubot-ms-teams#readme",
   "peerDependencies": {
-    "hubot": ">= 11"
+    "hubot": ">= 12"
   },
   "engines": {
     "node": ">= 18"
