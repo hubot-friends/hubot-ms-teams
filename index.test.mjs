@@ -186,4 +186,163 @@ describe('MS Teams Adapter', () => {
         assert.equal(response.status, 200)
         assert.deepEqual(wasCalled, true)
     })
+
+    it('Should handle messageRoom calls with room only envelope', async () => {
+        let sendActivityCalled = false
+        let messageToSend = 'Hello from messageRoom'
+        
+        // Mock the client to track sendActivity calls
+        client.continueConversation = async (conversationReference, callback) => {
+            const mockContext = {
+                async sendActivity(activity) {
+                    sendActivityCalled = true
+                    assert.equal(activity.text, messageToSend)
+                    return 'ok'
+                }
+            }
+            await callback(mockContext)
+        }
+        
+        // Store a conversation reference for the room
+        robot.adapter.conversationReferences['test-room'] = {
+            conversation: { id: 'test-conversation' },
+            serviceUrl: 'https://test.com'
+        }
+        
+        // This should not crash and should send the message
+        await robot.messageRoom('test-room', messageToSend)
+        
+        assert.equal(sendActivityCalled, true)
+    })
+
+    it('Should handle messageRoom calls with missing conversation reference', async () => {
+        let errorLogged = false
+        const originalError = robot.logger.error
+        robot.logger.error = (message) => {
+            if (message.includes('No conversation reference found for room')) {
+                errorLogged = true
+            }
+            originalError.call(robot.logger, message)
+        }
+        
+        // Attempt to send to a room without a conversation reference
+        const result = await robot.messageRoom('nonexistent-room', 'test message')
+        
+        assert.equal(errorLogged, true)
+        assert.deepEqual(result, [])
+        
+        // Restore original error function
+        robot.logger.error = originalError
+    })
+
+    it('Should handle messageRoom with adaptive cards', async () => {
+        let sendActivityCalled = false
+        const cardMessage = JSON.stringify({
+            type: 'AdaptiveCard',
+            version: '1.0',
+            body: [{
+                type: 'TextBlock',
+                text: 'Hello Card'
+            }]
+        })
+        
+        client.continueConversation = async (conversationReference, callback) => {
+            const mockContext = {
+                async sendActivity(activity) {
+                    sendActivityCalled = true
+                    assert.ok(activity.attachments)
+                    assert.equal(activity.attachments.length, 1)
+                    return 'ok'
+                }
+            }
+            await callback(mockContext)
+        }
+        
+        robot.adapter.conversationReferences['test-room'] = {
+            conversation: { id: 'test-conversation' },
+            serviceUrl: 'https://test.com'
+        }
+        
+        await robot.messageRoom('test-room', cardMessage)
+        
+        assert.equal(sendActivityCalled, true)
+    })
+
+    it('Should store conversation references when receiving messages', async () => {
+        // Send a message to the bot to trigger conversation reference storage
+        const response = await fetch(`http://127.0.0.1:${robot.server.address().port}/api/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: 'test message',
+                channelId: 'stored-room-id',
+                from: {
+                    id: 'test-user',
+                    name: 'test-user-name'
+                },
+                conversation: {
+                    id: 'test-conversation-id'
+                },
+                serviceUrl: 'https://test.service.url',
+                id: 'test-message-id',
+                type: 'message'
+            })
+        })
+
+        assert.equal(response.status, 200)
+        
+        // Verify that the conversation reference was stored
+        const storedRef = robot.adapter.conversationReferences['stored-room-id']
+        assert.ok(storedRef, 'Conversation reference should be stored')
+        assert.equal(storedRef.conversation.id, 'test-conversation-id')
+        assert.equal(storedRef.serviceUrl, 'https://test.service.url')
+        assert.equal(storedRef.channelId, 'stored-room-id')
+    })
+
+    it('Should work end-to-end: receive message then use messageRoom', async () => {
+        let messageRoomCalled = false
+        let receivedMessage = ''
+        
+        // Set up the client mock to capture messageRoom calls
+        client.continueConversation = async (conversationReference, callback) => {
+            const mockContext = {
+                async sendActivity(activity) {
+                    messageRoomCalled = true
+                    receivedMessage = activity.text
+                    return 'ok'
+                }
+            }
+            await callback(mockContext)
+        }
+        
+        // First, simulate receiving a message (this stores the conversation reference)
+        await fetch(`http://127.0.0.1:${robot.server.address().port}/api/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: 'hello bot',
+                channelId: 'integration-test-room',
+                from: {
+                    id: 'test-user',
+                    name: 'test-user-name'
+                },
+                conversation: {
+                    id: 'integration-conversation'
+                },
+                serviceUrl: 'https://integration.test.url',
+                id: 'integration-message-id',
+                type: 'message'
+            })
+        })
+        
+        // Now use messageRoom (this should work because we have a stored conversation reference)
+        await robot.messageRoom('integration-test-room', 'Response from messageRoom!')
+        
+        assert.equal(messageRoomCalled, true)
+        assert.equal(receivedMessage, 'Response from messageRoom!')
+    })
 })

@@ -3,7 +3,8 @@ import EventEmitter from 'node:events'
 import {
     MessageFactory,
     CardFactory,
-    TextFormatTypes
+    TextFormatTypes,
+    TurnContext
 } from 'botbuilder'
 
 const CONTENT_LENGTH_LIMIT = 2_000
@@ -33,8 +34,58 @@ class MsTeamsAdapter extends Adapter {
         await context.sendActivity('The bot encountered an error.')
     }
     async send(envelope, ...strings) {
+        // Handle messageRoom calls where envelope only has room property
+        if (envelope.room && !envelope.user) {
+            return await this.sendToRoom(envelope.room, ...strings)
+        }
+        // Handle regular send calls with user.message
         const responses = await this.sendWithDelegate(envelope.user.message, envelope, ...strings)
         this.emit('send', envelope, responses)
+        return responses
+    }
+    async sendToRoom(room, ...strings) {
+        const conversationReference = this.conversationReferences[room]
+        if (!conversationReference) {
+            this.robot.logger.error(`No conversation reference found for room: ${room}`)
+            return []
+        }
+        
+        const responses = []
+        await this.#client.continueConversation(conversationReference, async (context) => {
+            for await (let message of strings) {
+                let teamsMessage = MessageFactory.text(message, message)
+                let card = null
+
+                teamsMessage.textFormat = TextFormatTypes.Markdown
+                if (/<\/(.*)>/.test(message)) {
+                    teamsMessage.textFormat = TextFormatTypes.Xml
+                }
+                
+                try {
+                    card = JSON.parse(message)
+                    teamsMessage = {
+                        attachments: [ CardFactory.adaptiveCard(card) ]
+                    }
+                } catch(e) {
+                    this.robot.logger.debug(`message isn't a card: ${e}`)
+                }
+                
+                try {
+                    const response = await context.sendActivity(teamsMessage)
+                    if (response) {
+                        responses.push(response)
+                    }
+                } catch (e) {
+                    if(e.statusCode && e.statusCode === 401){
+                        this.robot.logger.error(`${this.robot.name}: Unauthorized, check TEAMS_BOT_APP_ID, TEAMS_BOT_CLIENT_SECRET, TEAMS_BOT_APP_TYPE, and TEAMS_BOT_TENANT_ID`)
+                    } else {
+                        this.robot.logger.error(`${this.robot.name}: ${e}`)
+                    }
+                }
+            }
+        })
+        
+        this.emit('send', { room }, responses)
         return responses
     }
     async reply(envelope, ...strings) {
@@ -92,8 +143,13 @@ class MsTeamsAdapter extends Adapter {
             if(conversationTypeMiddleware[req.body?.conversation?.conversationType]) {
                 req.body = conversationTypeMiddleware[req.body.conversation.conversationType](req.body, this.robot)
             }
+            
             try { 
                 await this.#client.process(req, res, async context => {
+                    // Store conversation reference for messageRoom functionality
+                    const conversationReference = TurnContext.getConversationReference(context.activity)
+                    this.conversationReferences[context.activity.channelId] = conversationReference
+                    
                     await this.#activityHandler.run(context)
                     res.status(200).send('ok')
                 })
