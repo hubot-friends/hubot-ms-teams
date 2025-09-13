@@ -15,6 +15,13 @@ const conversationTypeMiddleware = {
             body.text = `@${robotName} ${body.text}`
         }
         return body
+    },
+    channel(body, robot) {
+        const robotName = (robot.alias == false ? undefined : robot.alias) ?? robot.name
+        if (body.text.indexOf(`@${robotName} `) == -1) {
+            body.text = `@${robotName} ${body.text}`
+        }
+        return body
     }
 }
 
@@ -33,6 +40,7 @@ class MsTeamsAdapter extends Adapter {
         await context.sendTraceActivity('onTurnError trace', `${error}`, 'https://www.botframework.com/schemas/error', 'TurnError')
         await context.sendActivity('The bot encountered an error.')
     }
+
     async send(envelope, ...strings) {
         // Handle messageRoom calls where envelope only has room property
         if (envelope.room && !envelope.user) {
@@ -43,10 +51,35 @@ class MsTeamsAdapter extends Adapter {
         this.emit('send', envelope, responses)
         return responses
     }
+
     async sendToRoom(room, ...strings) {
-        const conversationReference = this.conversationReferences[room]
+        const serviceUrl = process.env.TEAMS_BOT_SERVICE_URL || `https://smba.trafficmanager.net/amer/${process.env.TEAMS_BOT_TENANT_ID}/`
+
+        // conversationReferences is keyed by the conversation id.
+        const conversationReference = this.conversationReferences[room.channelData.channel.id]
         if (!conversationReference) {
-            this.robot.logger.error(`No conversation reference found for room: ${room}`)
+            this.robot.logger.error(`No conversation reference found for room, creating a new one: ${room.channelData.channel.id}`)
+            const conversationParameters = {
+                isGroup: true,
+                bot: { id: process.env.TEAMS_BOT_APP_ID, name: this.robot.name},
+                serviceUrl: serviceUrl,
+                channelData: room.channelData,
+                activity: MessageFactory.text(strings.join('\n')),
+                tenantId: process.env.TEAMS_BOT_TENANT_ID
+            }
+            // The conversationReferences key is the conversation id.
+            // botAppId, channelId, serviceUrl, audience, conversationParameters, logic
+            await this.#client.createConversationAsync(process.env.TEAMS_BOT_APP_ID,
+                'msteams', // channel here means which platform is this in. Slack, MSTeams, etc.
+                serviceUrl,
+                null, // audience
+                conversationParameters,
+                async turnContext => {
+                    this.conversationReferences[turnContext.activity.conversation.id] = turnContext.activity.conversation
+                    await turnContext.sendActivity(strings.join('\n'))
+                }
+            )
+            this.robot.logger.debug(`Created new conversation reference for room: ${room}`)
             return []
         }
         
@@ -127,6 +160,13 @@ class MsTeamsAdapter extends Adapter {
         }
         return responses
     }
+    #transformSoHubotCanRecognizeIt(text, robotName) {
+        if(!text) return text
+        return text.replace(/^\r\n/, '')
+        .replace(/\\n$/, '')
+        .replace(`<at>${robotName}</at> `, `@${robotName} `)
+        .trim()
+    }
     async run() {
         this.robot.router.use(async (req, res, next) => {
             this.robot.logger.debug(`request: ${JSON.stringify({url: req.url, headers: req.headers, body: req.body})}`)
@@ -134,12 +174,14 @@ class MsTeamsAdapter extends Adapter {
         })
         this.robot.router.post(['/', '/api/messages'], async (req, res)=>{
             const robotName = (this.robot.alias == false ? undefined : this.robot.alias) ?? this.robot.name
-            req.body.text = req.body.text
-                .replace(/^\r\n/, '')
-                .replace(/\\n$/, '')
-                .replace(`<at>${robotName}</at> `, `@${robotName} `)
-                .trim()
 
+            // The text coming from Teams looks something like <at>test-bot</at> if it's
+            // directed to a user. We need to convert that to @test-bot for Hubot to
+            // recognize it.
+            req.body.text = this.#transformSoHubotCanRecognizeIt(req.body.text, robotName)
+            
+            // If the incoming message is a conversation, then the text is in a different structure.
+            // We need to extract it and transform it as well.
             if(conversationTypeMiddleware[req.body?.conversation?.conversationType]) {
                 req.body = conversationTypeMiddleware[req.body.conversation.conversationType](req.body, this.robot)
             }
@@ -148,17 +190,17 @@ class MsTeamsAdapter extends Adapter {
                 await this.#client.process(req, res, async context => {
                     // Store conversation reference for messageRoom functionality
                     const conversationReference = TurnContext.getConversationReference(context.activity)
-                    this.conversationReferences[context.activity.channelId] = conversationReference
-                    
+                    this.conversationReferences[context.activity.conversation.id] = conversationReference
                     await this.#activityHandler.run(context)
                     res.status(200).send('ok')
                 })
             } catch (e) {
-                this.logger.info(e)
+                this.robot.logger.error(e)
+                res.status(500).send('service error')
             }
         })
         this.robot.server.on('upgrade', async (req, socket, head) => {
-            console.log('upgrading to websockets')
+            this.robot.logger.info('upgrading to websockets')
             await this.#client.process(req, socket, head, (context) => this.#activityHandler.run(context));
         })
         this.emit('connected', this)

@@ -4,7 +4,8 @@
   "description": "A new MS Teams adapter for Hubot",
   "main": "index.mjs",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "start": "node --watch --env-file=.env node_modules/.bin/hubot -f ./index.mjs -n test-bot"
   },
   "repository": {
     "type": "git",
@@ -39,6 +40,9 @@
     "access": "public"
   },
   "dependencies": {
-    "botbuilder": "^4.21.1"
+    "botbuilder": "^4.23.3",
+    "hubot-diagnostics": "^2.1.3",
+    "hubot-help": "^2.1.5",
+    "hubot-rules": "^2.1.1"
   }
 }

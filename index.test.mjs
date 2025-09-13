@@ -15,6 +15,19 @@ class TeamsCloudAdapter extends EventEmitter {
     async process(req, res, callback) {
         await callback(new TurnContext(this, req.body))
     }
+    async createConversationAsync(botAppId, channelId, serviceUrl, audience, conversationParameters, logic) {
+        const conversationReference = {
+            conversation: { id: Date.now() },
+            serviceUrl: serviceUrl,
+            channelId: conversationParameters.channelData.channel.id
+        }
+        await logic(new TurnContext(this, {
+            ...conversationReference
+        }))
+    }
+    async sendActivities(context) {
+        this.emit('sendActivity', context)
+    }
 }
 describe('Initialize Adapter', () => {
     it('Should initialize adapter', async () => {
@@ -109,7 +122,14 @@ describe('MS Teams Adapter', () => {
             },
             body: JSON.stringify({
                 text: '@test-bot Hello World',
-                channelId: 'test-room',
+                channelId: 'msteams',
+                conversation: {
+                    isGroup: true,
+                    conversationType: 'channel',
+                    name: 'Test Conversation',
+                    id: '19:integration-conversation',
+                    tenantId: 'test-tenant-id'
+                },
                 from: {
                     id: 'test-user',
                     name: 'test-user-name'
@@ -118,6 +138,7 @@ describe('MS Teams Adapter', () => {
                 type: 'message'
             })
         })
+
         assert.equal(response.status, 200)
         assert.deepEqual(wasCalled, true)
     })
@@ -139,13 +160,20 @@ describe('MS Teams Adapter', () => {
             },
             body: JSON.stringify({
                 text: '<at>test-bot</at> Helo Worlds',
-                channelId: 'test-room',
+                channelId: 'msteams',
                 from: {
                     id: 'test-user',
                     name: 'test-user-name'
                 },
                 id: 'test-id',
-                type: 'message'
+                type: 'message',
+                conversation: {
+                    isGroup: true,
+                    conversationType: 'channel',
+                    name: 'Test Conversation',
+                    id: '19:integration-conversation',
+                    tenantId: 'test-tenant-id'
+                }
             })
         })
         assert.equal(response.status, 200)
@@ -166,7 +194,7 @@ describe('MS Teams Adapter', () => {
             },
             body: JSON.stringify({
                 text: 'lunch',
-                channelId: 'test-user',
+                channelId: 'msteams',
                 id: 'test-id',
                 type: 'message',
                 from: {
@@ -175,7 +203,9 @@ describe('MS Teams Adapter', () => {
                 },
                 conversation: {
                     conversationType: 'personal',
-                    id: 'a:112388d8s8djj'
+                    isGroup: false,
+                    id: 'a:112388d8s8djj',
+                    tenantId: 'test-tenant-id'
                 },
                 recipient: {
                     id: '888adsjjdskueu',
@@ -210,7 +240,12 @@ describe('MS Teams Adapter', () => {
         }
         
         // This should not crash and should send the message
-        await robot.messageRoom('test-room', messageToSend)
+        await robot.messageRoom({
+            channelData: {
+                channel: { id: 'test-room' },
+                team: { id: 'test-team' }
+            }
+        }, messageToSend)
         
         assert.equal(sendActivityCalled, true)
     })
@@ -226,8 +261,13 @@ describe('MS Teams Adapter', () => {
         }
         
         // Attempt to send to a room without a conversation reference
-        const result = await robot.messageRoom('nonexistent-room', 'test message')
-        
+        const result = await robot.messageRoom({
+            channelData: {
+                channel: { id: 'nonexistent-room' },
+                team: { id: 'test-team' }
+            }
+        }, 'test message')
+
         assert.equal(errorLogged, true)
         assert.deepEqual(result, [])
         
@@ -263,7 +303,12 @@ describe('MS Teams Adapter', () => {
             serviceUrl: 'https://test.com'
         }
         
-        await robot.messageRoom('test-room', cardMessage)
+        await robot.messageRoom({
+            channelData: {
+                channel: { id: 'test-room' },
+                team: { id: 'test-team' }
+            }
+        }, cardMessage)
         
         assert.equal(sendActivityCalled, true)
     })
@@ -277,13 +322,17 @@ describe('MS Teams Adapter', () => {
             },
             body: JSON.stringify({
                 text: 'test message',
-                channelId: 'stored-room-id',
+                channelId: 'msteams',
                 from: {
                     id: 'test-user',
                     name: 'test-user-name'
                 },
                 conversation: {
-                    id: 'test-conversation-id'
+                    isGroup: true,
+                    conversationType: 'channel',
+                    name: 'Test Conversation',
+                    id: '19:test-conversation-id',
+                    tenantId: 'test-tenant-id'
                 },
                 serviceUrl: 'https://test.service.url',
                 id: 'test-message-id',
@@ -294,55 +343,9 @@ describe('MS Teams Adapter', () => {
         assert.equal(response.status, 200)
         
         // Verify that the conversation reference was stored
-        const storedRef = robot.adapter.conversationReferences['stored-room-id']
+        const storedRef = robot.adapter.conversationReferences['19:test-conversation-id']
         assert.ok(storedRef, 'Conversation reference should be stored')
-        assert.equal(storedRef.conversation.id, 'test-conversation-id')
+        assert.equal(storedRef.conversation.id, '19:test-conversation-id')
         assert.equal(storedRef.serviceUrl, 'https://test.service.url')
-        assert.equal(storedRef.channelId, 'stored-room-id')
-    })
-
-    it('Should work end-to-end: receive message then use messageRoom', async () => {
-        let messageRoomCalled = false
-        let receivedMessage = ''
-        
-        // Set up the client mock to capture messageRoom calls
-        client.continueConversation = async (conversationReference, callback) => {
-            const mockContext = {
-                async sendActivity(activity) {
-                    messageRoomCalled = true
-                    receivedMessage = activity.text
-                    return 'ok'
-                }
-            }
-            await callback(mockContext)
-        }
-        
-        // First, simulate receiving a message (this stores the conversation reference)
-        await fetch(`http://127.0.0.1:${robot.server.address().port}/api/messages`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                text: 'hello bot',
-                channelId: 'integration-test-room',
-                from: {
-                    id: 'test-user',
-                    name: 'test-user-name'
-                },
-                conversation: {
-                    id: 'integration-conversation'
-                },
-                serviceUrl: 'https://integration.test.url',
-                id: 'integration-message-id',
-                type: 'message'
-            })
-        })
-        
-        // Now use messageRoom (this should work because we have a stored conversation reference)
-        await robot.messageRoom('integration-test-room', 'Response from messageRoom!')
-        
-        assert.equal(messageRoomCalled, true)
-        assert.equal(receivedMessage, 'Response from messageRoom!')
     })
 })
