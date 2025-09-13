@@ -79,7 +79,7 @@ class MsTeamsAdapter extends Adapter {
                     await turnContext.sendActivity(strings.join('\n'))
                 }
             )
-            this.robot.logger.debug(`Created new conversation reference for room: ${room}`)
+            this.robot.logger.debug(`Created new conversation reference for room: ${JSON.stringify(room, null, 2)}`)
             return []
         }
         
@@ -169,12 +169,13 @@ class MsTeamsAdapter extends Adapter {
     }
     async run() {
         this.robot.router.use(async (req, res, next) => {
-            this.robot.logger.debug(`request: ${JSON.stringify({url: req.url, headers: req.headers, body: req.body})}`)
+            this.robot.logger.debug(`url: ${req.url}`)
+            this.robot.logger.debug(`headers: ${JSON.stringify(req.headers)}`)
+            this.robot.logger.debug(`body: ${JSON.stringify(req.body)}`)
             next()
         })
         this.robot.router.post(['/', '/api/messages'], async (req, res)=>{
             const robotName = (this.robot.alias == false ? undefined : this.robot.alias) ?? this.robot.name
-
             // The text coming from Teams looks something like <at>test-bot</at> if it's
             // directed to a user. We need to convert that to @test-bot for Hubot to
             // recognize it.
