@@ -89,6 +89,10 @@ There are many approaches to enabling Azur's Bot Service platform to send HTTPS 
 
 TLDR; I'm going to use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) because you can [register a domain name](https://developers.cloudflare.com/registrar/), use [their tools](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) and they provide some level of security. You can [jump](#cloudflared) to those instructions if you prefer.
 
+```sh
+ cloudflared tunnel run --token ${token}
+ ```
+ 
 #### Approaches
 
 - Port forwarding: Configure your home router to forward requests from port `80` to port `80` of the IP Address of the Hubot instance. Then search the internet for "what's my ip", get your publically visible IP Address and use that when entering the **Messaging Endpoint** referenced below in **Bot Service Configuration**.
