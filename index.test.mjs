@@ -348,4 +348,58 @@ describe('MS Teams Adapter', () => {
         assert.equal(storedRef.conversation.id, '19:test-conversation-id')
         assert.equal(storedRef.serviceUrl, 'https://test.service.url')
     })
+
+    it('Should not intercept non-Teams POST requests (e.g., GitHub webhooks)', async () => {
+        let githubHandlerCalled = false
+        
+        // Register a GitHub webhook handler
+        robot.router.post('/github-webhook', async (req, res) => {
+            githubHandlerCalled = true
+            assert.equal(req.body.repository, 'test-repo')
+            res.status(200).send('webhook received')
+        })
+        
+        // Send a GitHub webhook payload (which doesn't have a 'type' field)
+        const response = await fetch(`http://127.0.0.1:${robot.server.address().port}/github-webhook`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-GitHub-Event': 'push'
+            },
+            body: JSON.stringify({
+                repository: 'test-repo',
+                commits: [],
+                ref: 'refs/heads/main'
+            })
+        })
+
+        assert.equal(response.status, 200)
+        assert.equal(githubHandlerCalled, true)
+    })
+
+    it('Should only handle POST requests to /api/messages, not /', async () => {
+        let rootHandlerCalled = false
+        
+        // Register a handler for root path
+        robot.router.post('/', async (req, res) => {
+            rootHandlerCalled = true
+            res.status(200).send('root handler')
+        })
+        
+        // POST to root should be handled by the custom handler, not the Teams adapter
+        const response = await fetch(`http://127.0.0.1:${robot.server.address().port}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                some: 'data'
+            })
+        })
+
+        assert.equal(response.status, 200)
+        assert.equal(rootHandlerCalled, true)
+        const responseText = await response.text()
+        assert.equal(responseText, 'root handler')
+    })
 })

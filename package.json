@@ -4,7 +4,7 @@
   "description": "A new MS Teams adapter for Hubot",
   "main": "index.mjs",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test --test-timeout=10000",
     "start": "node --watch --env-file=.env node_modules/.bin/hubot -f ./index.mjs -n test-bot"
   },
   "repository": {
