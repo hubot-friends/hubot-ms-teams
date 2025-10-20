@@ -174,7 +174,8 @@ class MsTeamsAdapter extends Adapter {
             this.robot.logger.debug(`body: ${JSON.stringify(req.body)}`)
             next()
         })
-        this.robot.router.post(['/', '/api/messages'], async (req, res)=>{
+
+        this.robot.router.post('/api/messages', async (req, res)=>{
             const robotName = (this.robot.alias == false ? undefined : this.robot.alias) ?? this.robot.name
             // The text coming from Teams looks something like <at>test-bot</at> if it's
             // directed to a user. We need to convert that to @test-bot for Hubot to
