@@ -131,3 +131,7 @@ dist
 
 external-scripts.json
 scripts
+
+!.github/
+!.github/scripts/
+!.github/scripts/**
