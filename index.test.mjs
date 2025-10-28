@@ -5,7 +5,8 @@ import { EventEmitter } from 'node:events'
 import { MsTeamsAdapter } from './src/MsTeamsAdapter.mjs'
 import init, { HubotActivityHandler } from './index.mjs'
 import {
-    TurnContext
+    TurnContext,
+    TextFormatTypes
 } from 'botbuilder'
 
 class TeamsCloudAdapter extends EventEmitter {
@@ -401,5 +402,146 @@ describe('MS Teams Adapter', () => {
         assert.equal(rootHandlerCalled, true)
         const responseText = await response.text()
         assert.equal(responseText, 'root handler')
+    })
+
+    it('Should set textFormat to Markdown for messages with markdown content', async () => {
+        let sendActivityCalled = false
+        let capturedActivity = null
+        
+        robot.adapter.on('sendActivity', context => {
+            sendActivityCalled = true
+            capturedActivity = context
+        })
+        
+        robot.respond(/markdown test/i, async (res) => {
+            await res.reply('**bold** and *italic* text')
+        })
+        
+        const response = await fetch(`http://127.0.0.1:${robot.server.address().port}/api/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: '@test-bot markdown test',
+                channelId: 'msteams',
+                conversation: {
+                    isGroup: true,
+                    conversationType: 'channel',
+                    name: 'Test Conversation',
+                    id: '19:integration-conversation',
+                    tenantId: 'test-tenant-id'
+                },
+                from: {
+                    id: 'test-user',
+                    name: 'test-user-name'
+                },
+                id: 'test-id',
+                type: 'message'
+            })
+        })
+
+        assert.equal(response.status, 200)
+        assert.equal(sendActivityCalled, true)
+        assert.ok(capturedActivity, 'Activity should be captured')
+        assert.equal(capturedActivity.textFormat, TextFormatTypes.Markdown, 'Text format should be Markdown')
+    })
+
+    // Speach Synthesis Markup Language (SSML)
+    it('Should set textFormat to Xml for SSML messages', async () => {
+        let sendActivityCalled = false
+        let capturedActivity = null
+        
+        robot.adapter.on('sendActivity', context => {
+            sendActivityCalled = true
+            capturedActivity = context
+        })
+        
+        robot.respond(/ssml test/i, async (res) => {
+            await res.reply(`<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="string">
+    <mstts:backgroundaudio src="string" volume="string" fadein="string" fadeout="string"/>
+    <mstts:voiceconversion url="string"/>
+    <voice name="string" effect="string">
+    <audio src="string"></audio>
+        <bookmark mark="string"/>
+        <break strength="string" time="string" />
+        <emphasis level="value"></emphasis>
+        <lang xml:lang="string"></lang>
+        <lexicon uri="string"/>
+    </voice>
+</speak>`)
+        })
+        
+        const response = await fetch(`http://127.0.0.1:${robot.server.address().port}/api/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: '@test-bot ssml test',
+                channelId: 'msteams',
+                conversation: {
+                    isGroup: true,
+                    conversationType: 'channel',
+                    name: 'Test Conversation',
+                    id: '19:integration-conversation',
+                    tenantId: 'test-tenant-id'
+                },
+                from: {
+                    id: 'test-user',
+                    name: 'test-user-name'
+                },
+                id: 'test-id',
+                type: 'message'
+            })
+        })
+
+        assert.equal(response.status, 200)
+        assert.equal(sendActivityCalled, true)
+        assert.ok(capturedActivity, 'Activity should be captured')
+        assert.equal(capturedActivity.textFormat, TextFormatTypes.Xml, 'Text format should be Xml')
+    })
+
+    it('Should set textFormat to Markdown for markdown with inline HTML elements', async () => {
+        let sendActivityCalled = false
+        let capturedActivity = null
+        
+        robot.adapter.on('sendActivity', context => {
+            sendActivityCalled = true
+            capturedActivity = context
+        })
+        
+        robot.respond(/inline html test/i, async (res) => {
+            await res.reply('**bold markdown** with <span>test html element</span> inline with markdown')
+        })
+        
+        const response = await fetch(`http://127.0.0.1:${robot.server.address().port}/api/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: '@test-bot inline html test',
+                channelId: 'msteams',
+                conversation: {
+                    isGroup: true,
+                    conversationType: 'channel',
+                    name: 'Test Conversation',
+                    id: '19:integration-conversation',
+                    tenantId: 'test-tenant-id'
+                },
+                from: {
+                    id: 'test-user',
+                    name: 'test-user-name'
+                },
+                id: 'test-id',
+                type: 'message'
+            })
+        })
+
+        assert.equal(response.status, 200)
+        assert.equal(sendActivityCalled, true)
+        assert.ok(capturedActivity, 'Activity should be captured')
+        assert.equal(capturedActivity.textFormat, TextFormatTypes.Markdown, 'Text format should be Markdown even with inline HTML')
     })
 })

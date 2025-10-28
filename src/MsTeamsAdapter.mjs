@@ -89,10 +89,7 @@ class MsTeamsAdapter extends Adapter {
                 let teamsMessage = MessageFactory.text(message, message)
                 let card = null
 
-                teamsMessage.textFormat = TextFormatTypes.Markdown
-                if (/<\/(.*)>/.test(message)) {
-                    teamsMessage.textFormat = TextFormatTypes.Xml
-                }
+                teamsMessage.textFormat = this.textFormatTypeFromMessage(message)
                 
                 try {
                     card = JSON.parse(message)
@@ -132,10 +129,7 @@ class MsTeamsAdapter extends Adapter {
             let teamsMessage = MessageFactory.text(message, message)
             let card = null
 
-            teamsMessage.textFormat = TextFormatTypes.Markdown
-            if (/<\/(.*)>/.test(message)) {
-                teamsMessage.textFormat = TextFormatTypes.Xml
-            }
+            teamsMessage.textFormat = this.textFormatTypeFromMessage(message)
             
             try {
                 card = JSON.parse(message)
@@ -160,6 +154,29 @@ class MsTeamsAdapter extends Adapter {
         }
         return responses
     }
+    textFormatTypeFromMessage (text) {
+        // allow for SSML
+        const xmlHeader = /^\s*<\?xml[\s\S]*?\?>/i.test(text)
+        if (xmlHeader) {
+            return TextFormatTypes.Xml
+        }
+
+        // If message starts with a left carat, assume it's XML
+        const startsWithLeftCarat = /^\s*</.test(text)
+        if (startsWithLeftCarat) {
+            return TextFormatTypes.Xml
+        }
+
+        // If it has markdown syntax or Teams mentions, use Markdown
+        const hasMarkdownSyntax = /(\*\*|__|\*|_|`|#|\[.*\]\(.*\)|^\s*[-*+]\s|^\s*\d+\.\s)/m.test(text)
+        if (hasMarkdownSyntax) {
+            return TextFormatTypes.Markdown
+        }
+
+        // Default to Plain
+        return TextFormatTypes.Plain
+    }
+
     #transformSoHubotCanRecognizeIt(text, robotName) {
         if(!text) return text
         return text.replace(/^\r\n/, '')
